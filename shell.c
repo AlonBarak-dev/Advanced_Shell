@@ -7,56 +7,80 @@
 #include "unistd.h"
 #include <string.h>
 
+// init params
+char command[1024];
+char *token;
+int i;
+char *outfile;
+int fd, amper, redirect, piping, retid, status, argc1;
+int fildes[2];
+char *argv1[10], *argv2[10];
+
+
+int parse_first_part(){
+    /*
+        This Function parse the first part of the given command from the user.
+        first part == the command before a |.
+        it fills the argv1 array with tokenized commands.
+        It return 0 if the command is empty, 
+        else it returns 1.
+    */
+
+    command[strlen(command) - 1] = '\0';
+    // An indicator when the user use a pipe in his command
+    piping = 0;
+    /* parse command line */
+    i = 0;
+    // tokenize the command string
+    token = strtok (command," ");
+    while (token != NULL)
+    {
+        if(i >= 10){
+            printf("Entered too much arguments, can only use 10 arguments! \n");
+            break;
+        }
+        argv1[i] = token;
+        token = strtok (NULL, " ");
+        i++;
+        // check whether the user want to use piping, if so break!
+        if (token && ! strcmp(token, "|")) {
+            piping = 1;
+            break;
+        }
+    }
+    argv1[i] = NULL;
+    argc1 = i;
+
+    /* Is command empty */
+    if (argv1[0] == NULL)
+        return 0;
+    else
+        return 1;
+}
+
 int main() {
-    // init params
-    char command[1024];
-    char *token;
-    int i;
-    char *outfile;
-    int fd, amper, redirect, piping, retid, status, argc1;
-    int fildes[2];
-    char *argv1[10], *argv2[10];
 
     while (1)
     {
         printf("hello: ");
         // wait for input from the user
         fgets(command, 1024, stdin);
-        command[strlen(command) - 1] = '\0';
-        // An indicator when the user use a pipe in his command
-        piping = 0;
-
-        /* parse command line */
-        i = 0;
-        // tokenize the command string
-        token = strtok (command," ");
-        while (token != NULL)
+        
+        // parse the given command, if 0 -> an empty command!
+        if (!parse_first_part())
         {
-            if(i >= 10){
-                printf("Entered too much arguments, can only use 10 arguments! \n");
-                break;
-            }
-            argv1[i] = token;
-            token = strtok (NULL, " ");
-            i++;
-            // check whether the user want to use piping
-            if (token && ! strcmp(token, "|")) {
-                piping = 1;
-                break;
-            }
-        }
-        argv1[i] = NULL;
-        argc1 = i;
-
-        /* Is command empty */
-        if (argv1[0] == NULL)
             continue;
+        }
 
         /* Does command contain pipe */
         if (piping) {
             i = 0;
             while (token!= NULL)
             {
+                if(i >= 10){
+                    printf("Entered too much arguments, can only use 10 arguments! \n");
+                    break;
+                }
                 token = strtok (NULL, " ");
                 argv2[i] = token;
                 i++;
