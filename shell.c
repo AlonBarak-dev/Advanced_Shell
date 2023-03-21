@@ -12,7 +12,7 @@ char command[1024];
 char *token;
 int i;
 char *outfile;
-int fd, amper, redirect, piping, retid, status, argc1;
+int fd, amper, override_stdout_redirect, piping, retid, status, argc1;
 int fildes[2];
 char *argv1[10], *argv2[10];
 
@@ -82,6 +82,17 @@ int check_amper(){
         return 0; 
 }
 
+int check_override_stdout_redirection(){
+    /* Does command contains a '>'*/
+    if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], ">")) {
+        argv1[argc1 - 2] = NULL;
+        outfile = argv1[argc1 - 1];
+        return 1;
+    }
+    else 
+        return 0;
+}
+
 int main() {
 
     while (1)
@@ -103,19 +114,14 @@ int main() {
         /* Does command line end with & */ 
         amper = check_amper();
 
-        if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], ">")) {
-            redirect = 1;
-            argv1[argc1 - 2] = NULL;
-            outfile = argv1[argc1 - 1];
-            }
-        else 
-            redirect = 0; 
+        /* Does command contains a '>'*/
+        override_stdout_redirect = check_override_stdout_redirection();
 
         /* for commands not part of the shell command language */ 
 
         if (fork() == 0) { 
             /* redirection of IO ? */
-            if (redirect) {
+            if (override_stdout_redirect) {
                 fd = creat(outfile, 0660); 
                 close (STDOUT_FILENO); 
                 dup(fd); 
