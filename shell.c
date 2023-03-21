@@ -12,7 +12,7 @@ char command[1024];
 char *token;
 int i;
 char *outfile;
-int fd, amper, override_stdout_redirect, append_stdout_redirect, piping, retid, status, argc1;
+int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect, piping, retid, status, argc1;
 int fildes[2];
 char *argv1[10], *argv2[10];
 
@@ -26,7 +26,6 @@ int parse_first_part(){
         else it returns 1.
     */
 
-    command[strlen(command) - 1] = '\0';
     // An indicator when the user use a pipe in his command
     piping = 0;
     /* parse command line */
@@ -104,6 +103,17 @@ int check_append_stdout_redirection(){
         return 0;
 }
 
+int check_stderr_redirection(){
+    /* Does command contains a '>>'*/
+    if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], "2>")) {
+        argv1[argc1 - 2] = NULL;
+        outfile = argv1[argc1 - 1];
+        return 1;
+    }
+    else 
+        return 0;
+}
+
 int main() {
 
     while (1)
@@ -111,6 +121,7 @@ int main() {
         printf("hello: ");
         // wait for input from the user
         fgets(command, 1024, stdin);
+        command[strlen(command) - 1] = '\0';
         
         // parse the given command, if 0 -> an empty command!
         if (!parse_first_part()){
@@ -130,6 +141,9 @@ int main() {
 
         /* Does command contains a '>>'*/
         append_stdout_redirect = check_append_stdout_redirection();
+
+        /* Does command contains a '2>'*/
+        stderr_redirect = check_stderr_redirection();
 
         /* for commands not part of the shell command language */ 
 
