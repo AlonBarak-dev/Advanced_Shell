@@ -73,6 +73,15 @@ void parse_second_part(){
     argv2[i] = NULL;
 }
 
+int check_amper(){
+    if (! strcmp(argv1[argc1 - 1], "&")) {
+        argv1[argc1 - 1] = NULL;
+        return 1;
+    }
+    else 
+        return 0; 
+}
+
 int main() {
 
     while (1)
@@ -92,12 +101,7 @@ int main() {
         }
 
         /* Does command line end with & */ 
-        if (! strcmp(argv1[argc1 - 1], "&")) {
-            amper = 1;
-            argv1[argc1 - 1] = NULL;
-            }
-        else 
-            amper = 0; 
+        amper = check_amper();
 
         if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], ">")) {
             redirect = 1;
