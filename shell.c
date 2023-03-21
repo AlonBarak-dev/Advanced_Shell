@@ -28,12 +28,18 @@ int main() {
 
         /* parse command line */
         i = 0;
+        // tokenize the command string
         token = strtok (command," ");
         while (token != NULL)
         {
+            if(i >= 10){
+                printf("Entered too much arguments, can only use 10 arguments! \n");
+                break;
+            }
             argv1[i] = token;
             token = strtok (NULL, " ");
             i++;
+            // check whether the user want to use piping
             if (token && ! strcmp(token, "|")) {
                 piping = 1;
                 break;
