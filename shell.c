@@ -58,6 +58,21 @@ int parse_first_part(){
         return 1;
 }
 
+void parse_second_part(){
+    i = 0;
+    while (token!= NULL)
+    {
+        if(i >= 10){
+            printf("Entered too much arguments, can only use 10 arguments! \n");
+            break;
+        }
+        token = strtok (NULL, " ");
+        argv2[i] = token;
+        i++;
+    }
+    argv2[i] = NULL;
+}
+
 int main() {
 
     while (1)
@@ -67,25 +82,13 @@ int main() {
         fgets(command, 1024, stdin);
         
         // parse the given command, if 0 -> an empty command!
-        if (!parse_first_part())
-        {
+        if (!parse_first_part()){
             continue;
         }
 
-        /* Does command contain pipe */
+        // Does command contain pipe -> parse the second part of the command
         if (piping) {
-            i = 0;
-            while (token!= NULL)
-            {
-                if(i >= 10){
-                    printf("Entered too much arguments, can only use 10 arguments! \n");
-                    break;
-                }
-                token = strtok (NULL, " ");
-                argv2[i] = token;
-                i++;
-            }
-            argv2[i] = NULL;
+            parse_second_part();
         }
 
         /* Does command line end with & */ 
