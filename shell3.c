@@ -19,10 +19,8 @@ char *argv1[10], *argv2[10];
 while (1)
 {
     printf("hello: ");
-    // wait for input from the user
     fgets(command, 1024, stdin);
     command[strlen(command) - 1] = '\0';
-    // An indicator when the user use a pipe in his command
     piping = 0;
 
     /* parse command line */
@@ -79,7 +77,7 @@ while (1)
         /* redirection of IO ? */
         if (redirect) {
             fd = creat(outfile, 0660); 
-            close (STDOUT_FILENO); 
+            close (STDOUT_FILENO) ; 
             dup(fd); 
             close(fd); 
             /* stdout is now redirected */
