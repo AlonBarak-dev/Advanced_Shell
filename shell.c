@@ -10,6 +10,9 @@
 
 // init params
 char command[1024];
+char last_command[1024];
+char result[1024];
+int used_last_command;
 char *token;
 char* prompt_name;
 int i;
@@ -17,9 +20,64 @@ char *outfile;
 int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect, piping, retid, status, argc1;
 int fildes[2];
 char *argv1[10], *argv2[10];
-char *history[20];
 char path[256];
 
+
+char* replaceWord(const char* s, const char* oldW,
+                const char* newW)
+{
+    
+    int i, cnt = 0;
+    int newWlen = strlen(newW);
+    int oldWlen = strlen(oldW);
+ 
+    // Counting the number of times old word
+    // occur in the string
+    for (i = 0; s[i] != '\0'; i++) {
+        if (strstr(&s[i], oldW) == &s[i]) {
+            cnt++;
+ 
+            // Jumping to index after the old word.
+            i += oldWlen - 1;
+        }
+    }
+ 
+    // Making new string of enough length 
+    i = 0;
+    while (*s) {
+        // compare the substring with the result
+        if (strstr(s, oldW) == s) {
+            strcpy(&result[i], newW);
+            i += newWlen;
+            s += oldWlen;
+        }
+        else
+            result[i++] = *s++;
+    }
+
+    result[i] = '\0';
+    return result;
+}
+
+int save_last_command(){
+   
+    strcpy(last_command, "");
+    for (size_t i = 0; i < argc1; i++)
+    {
+        strcat(last_command, " ");
+        strcat(last_command, argv1[i]);
+    }
+    if(piping){
+        strcat(last_command, " ");
+        strcat(last_command, "|");
+        for (size_t i = 0; i < (sizeof(argv2) / sizeof(argv2[0])); i++)
+        {
+            strcat(last_command, " ");
+            strcat(last_command, argv2[i]);
+        }
+    }
+    
+}
 
 
 int parse_first_part(){
@@ -30,7 +88,7 @@ int parse_first_part(){
         It return 0 if the command is empty, 
         else it returns 1.
     */
-
+    used_last_command = 0;
     // An indicator when the user use a pipe in his command
     piping = 0;
     /* parse command line */
@@ -43,6 +101,13 @@ int parse_first_part(){
             printf("Entered too much arguments, can only use 10 arguments! \n");
             break;
         }
+        if (!strcmp(token, "!!"))
+        {
+            // want to perform the last command, replace the !! with last command
+            token = strtok(replaceWord(command, token, last_command), " ");
+            used_last_command = 1;
+        }
+        
         argv1[i] = token;
         token = strtok (NULL, " ");
         i++;
@@ -160,7 +225,7 @@ int perform_cd(){
     if (argc1 > 0 && ! strcmp(argv1[0], "cd"))
     {
         getcwd(path, 256);
-        printf("Before: %s\n", path);
+        printf("Before: %s\n", path);       // Delete before submitting
         if (argc1 == 1 || ! strcmp(argv1[1], ".."))
         {
             // Go back to parent
@@ -173,7 +238,7 @@ int perform_cd(){
             chdir(path);
         }
         getcwd(path, 256);
-        printf("After: %s\n", path);
+        printf("After: %s\n", path);    // Delete before submitting
         return 1;
     }
     return 0;
@@ -184,6 +249,7 @@ int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
     strcpy(prompt_name, "hello: ");
+
 
     while (1)
     {
@@ -289,5 +355,10 @@ int main() {
         /* waits for child to exit if required */
         if (amper == 0)
             retid = wait(&status);
+        
+        // save the last command
+        save_last_command();
+        
+        
     }
 }
