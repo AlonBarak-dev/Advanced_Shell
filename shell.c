@@ -130,6 +130,21 @@ int replace_prompt_name(){
     
 }
 
+int echo(){
+    /* Does the command look like: echo strings.. */
+    if (argc1 > 1 && ! strcmp(argv1[0], "echo"))
+    {
+        for (size_t i = 1; i < argc1; i++)
+        {
+            printf("%s ", argv1[i]);
+        }
+        printf("\n");
+        return 1;
+    }
+    else
+        return 0;
+}
+
 int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
@@ -174,6 +189,13 @@ int main() {
         {
             continue;
         }
+
+        /* Echo command */
+        if (echo())
+        {
+            continue;
+        }
+        
         
 
         if (fork() == 0) { 
