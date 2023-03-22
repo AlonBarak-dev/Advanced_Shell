@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include "stdio.h"
 #include "errno.h"
@@ -16,6 +17,8 @@ char *outfile;
 int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect, piping, retid, status, argc1;
 int fildes[2];
 char *argv1[10], *argv2[10];
+char *history[20];
+
 
 
 int parse_first_part(){
@@ -134,6 +137,12 @@ int echo(){
     /* Does the command look like: echo strings.. */
     if (argc1 > 1 && ! strcmp(argv1[0], "echo"))
     {
+        if (! strcmp(argv1[1], "$?"))
+        {
+            printf("%d \n", status);
+            return 1;
+        }
+        
         for (size_t i = 1; i < argc1; i++)
         {
             printf("%s ", argv1[i]);

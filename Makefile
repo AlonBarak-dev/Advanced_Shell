@@ -1,5 +1,5 @@
 run:
-	gcc -o shell shell.c
+	gcc -o myshell shell.c
 
 clean:
-	rm shell l*.txt
+	rm myshell l*.txt
