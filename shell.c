@@ -262,6 +262,15 @@ int perform_cd(){
     
 }
 
+int quit(){
+    if (argc1 > 0 && ! strcmp(argv1[0], "quit"))
+    {
+        return 1;
+    }
+    return 0;
+    
+}
+
 int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
@@ -284,6 +293,16 @@ int main() {
         if (piping) {
             parse_second_part();
         }
+
+
+        /* Check if the user wants to QUIT */
+        if (quit())
+        {
+            // exit with code 0
+            exit(0);
+        }
+        
+
 
         /* Does command line end with & */ 
         amper = check_amper();
