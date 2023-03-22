@@ -104,7 +104,7 @@ int check_append_stdout_redirection(){
 }
 
 int check_stderr_redirection(){
-    /* Does command contains a '>>'*/
+    /* Does command contains a '2>'*/
     if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], "2>")) {
         argv1[argc1 - 2] = NULL;
         outfile = argv1[argc1 - 1];
@@ -136,16 +136,19 @@ int main() {
         /* Does command line end with & */ 
         amper = check_amper();
 
-        /* Does command contains a '>'*/
-        override_stdout_redirect = check_override_stdout_redirection();
+        /* Does command contains a '>' | '>>' | '2>' */
+        override_stdout_redirect = 0;
+        append_stdout_redirect = 0;
+        stderr_redirect = 0;
 
-        /* Does command contains a '>>'*/
-        append_stdout_redirect = check_append_stdout_redirection();
-
-        /* Does command contains a '2>'*/
-        stderr_redirect = check_stderr_redirection();
-
-        /* for commands not part of the shell command language */ 
+        if (!(override_stdout_redirect = check_override_stdout_redirection()))
+        {
+            if (!(append_stdout_redirect = check_append_stdout_redirection()))
+            {
+                stderr_redirect = check_stderr_redirection();
+            }
+            
+        }
 
         if (fork() == 0) { 
             /* redirection of IO ? */
@@ -156,6 +159,13 @@ int main() {
                 close(fd); 
                 /* stdout is now redirected */
             } 
+            if (append_stdout_redirect){
+                fd = open(outfile, O_RDWR | O_CREAT, 0666);
+                lseek(fd, -1, SEEK_END);
+                close(STDOUT_FILENO);
+                dup(fd);
+                close(fd);
+            }
             if (piping) {
                 pipe (fildes);
                 if (fork() == 0) { 
