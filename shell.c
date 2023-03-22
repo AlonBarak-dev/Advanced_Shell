@@ -18,6 +18,7 @@ int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect
 int fildes[2];
 char *argv1[10], *argv2[10];
 char *history[20];
+char path[256];
 
 
 
@@ -154,6 +155,31 @@ int echo(){
         return 0;
 }
 
+int perform_cd(){
+
+    if (argc1 > 0 && ! strcmp(argv1[0], "cd"))
+    {
+        getcwd(path, 256);
+        printf("Before: %s\n", path);
+        if (argc1 == 1 || ! strcmp(argv1[1], ".."))
+        {
+            // Go back to parent
+            chdir("..");
+        }
+        else {
+            // Go to the desired path
+            strcat(path, "/");
+            strcat(path, argv1[1]);
+            chdir(path);
+        }
+        getcwd(path, 256);
+        printf("After: %s\n", path);
+        return 1;
+    }
+    return 0;
+    
+}
+
 int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
@@ -205,6 +231,11 @@ int main() {
             continue;
         }
         
+        /* CD command */
+        if (perform_cd())
+        {
+            continue;
+        }
         
 
         if (fork() == 0) { 
