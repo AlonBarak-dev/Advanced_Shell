@@ -151,7 +151,7 @@ int main() {
         }
 
         if (fork() == 0) { 
-            /* redirection of IO ? */
+            /* redirection of Stdout: : */
             if (override_stdout_redirect) {
                 fd = creat(outfile, 0660); 
                 close (STDOUT_FILENO); 
@@ -166,6 +166,14 @@ int main() {
                 dup(fd);
                 close(fd);
             }
+            /* redirection of Stderr: */
+            if (stderr_redirect){
+                fd = creat(outfile, 0660); 
+                close (STDERR_FILENO); 
+                dup(fd); 
+                close(fd); 
+            }
+            
             if (piping) {
                 pipe (fildes);
                 if (fork() == 0) { 
