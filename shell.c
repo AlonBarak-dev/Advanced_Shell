@@ -60,20 +60,35 @@ char* replaceWord(const char* s, const char* oldW,
 }
 
 int save_last_command(){
-   
+
+    if (override_stdout_redirect)
+    {
+        argv1[argc1 - 2] = ">";
+    }
+    else if(append_stdout_redirect){
+        argv1[argc1 - 2] = ">>";
+    }
+    else if(stderr_redirect){
+        argv1[argc1 - 2] = "2>";
+    }
+    
     strcpy(last_command, "");
-    for (size_t i = 0; i < argc1; i++)
+    int i = 0;
+    while (argv1[i] != NULL)
     {
         strcat(last_command, " ");
         strcat(last_command, argv1[i]);
+        i++;
     }
     if(piping){
+        i = 0;
         strcat(last_command, " ");
         strcat(last_command, "|");
-        for (size_t i = 0; i < (sizeof(argv2) / sizeof(argv2[0])); i++)
+        while (argv2[i] != NULL)
         {
             strcat(last_command, " ");
             strcat(last_command, argv2[i]);
+            i++;
         }
     }
     
@@ -94,6 +109,8 @@ int parse_first_part(){
     /* parse command line */
     i = 0;
     // tokenize the command string
+    char copy_command[1024];
+    strcpy(copy_command, command);
     token = strtok (command," ");
     while (token != NULL)
     {
@@ -104,7 +121,7 @@ int parse_first_part(){
         if (!strcmp(token, "!!"))
         {
             // want to perform the last command, replace the !! with last command
-            token = strtok(replaceWord(command, token, last_command), " ");
+            token = strtok(replaceWord(copy_command, token, last_command), " ");
             used_last_command = 1;
         }
         
@@ -357,6 +374,7 @@ int main() {
             retid = wait(&status);
         
         // save the last command
+
         save_last_command();
         
         

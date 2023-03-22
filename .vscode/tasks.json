@@ -9,7 +9,7 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${workspaceFolder}/shell"
+                "${workspaceFolder}/myshell"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
