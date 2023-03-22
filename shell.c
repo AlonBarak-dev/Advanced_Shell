@@ -10,6 +10,7 @@
 // init params
 char command[1024];
 char *token;
+char* prompt_name;
 int i;
 char *outfile;
 int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect, piping, retid, status, argc1;
@@ -114,11 +115,29 @@ int check_stderr_redirection(){
         return 0;
 }
 
+int replace_prompt_name(){
+    /* Does the command look like: prompt = new_prompt */
+    if (argc1 > 2 && ! strcmp(argv1[0] ,"prompt") && ! strcmp(argv1[1], "="))
+    {
+        free(prompt_name);
+        prompt_name = (char*) malloc(sizeof(char)* sizeof(argv1[2]) + 1);
+        strcpy(prompt_name, argv1[2]);
+        strcat(prompt_name, " ");
+        return 1;
+    }
+    else
+        return 0;
+    
+}
+
 int main() {
+
+    prompt_name = (char*)malloc(sizeof(char)*8);
+    strcpy(prompt_name, "hello: ");
 
     while (1)
     {
-        printf("hello: ");
+        printf("%s", prompt_name);
         // wait for input from the user
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
@@ -149,6 +168,13 @@ int main() {
             }
             
         }
+
+        /* Replace prompt name ? */
+        if (replace_prompt_name())
+        {
+            continue;
+        }
+        
 
         if (fork() == 0) { 
             /* redirection of Stdout: : */
