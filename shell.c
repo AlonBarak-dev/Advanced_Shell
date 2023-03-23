@@ -7,6 +7,7 @@
 #include "stdlib.h"
 #include "unistd.h"
 #include <string.h>
+#include <signal.h>
 
 // init params
 char command[1024];
@@ -21,6 +22,7 @@ int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect
 int fildes[2];
 char *argv1[10], *argv2[10];
 char path[256];
+pid_t pid_1;
 
 
 char* replaceWord(const char* s, const char* oldW,
@@ -271,10 +273,21 @@ int quit(){
     
 }
 
+void int_handler(int signal){
+    printf("You typed Control-C!\n");
+    // if(pid_1 != 0){
+    kill(pid_1, SIGINT);
+    printf("kill");
+    // }
+    
+}
+
 int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
     strcpy(prompt_name, "hello: ");
+    signal(SIGINT, int_handler);
+    pid_1 = -1;
 
 
     while (1)
@@ -302,8 +315,6 @@ int main() {
             exit(0);
         }
         
-
-
         /* Does command line end with & */ 
         amper = check_amper();
 
@@ -339,8 +350,8 @@ int main() {
             continue;
         }
         
-
-        if (fork() == 0) { 
+        pid_1 = fork(); 
+        if (pid_1 == 0) { 
             /* redirection of Stdout: : */
             if (override_stdout_redirect) {
                 fd = creat(outfile, 0660); 
