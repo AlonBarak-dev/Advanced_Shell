@@ -14,15 +14,81 @@ char command[1024];
 char last_command[1024];
 char result[1024];
 int used_last_command;
+int number_of_pipes;
 char *token;
 char* prompt_name;
 int i;
 char *outfile;
 int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect, piping, retid, status, argc1;
 int fildes[2];
+int *pipes_fd;
 char *argv1[10], *argv2[10];
 char path[256];
 pid_t pid_1;
+struct args** arguments;
+int number_of_arguments;
+
+
+/* Args struct area */
+
+typedef struct arg
+{
+    char* arg[10];
+    int argc;
+} arg;
+
+typedef struct args 
+{
+    arg argument;
+    struct args* next;
+} args;
+
+args* create_args(){
+    // allocate memory for the first argument
+    args* argv = (struct args*)malloc(sizeof(args));
+    return argv;
+}
+
+args* get_last_argument(){
+    args* copy = *arguments;
+    while (copy->next != NULL)
+    {
+        copy = copy->next;
+    }
+    return copy;
+    
+}
+
+void add_argument(char* arg[10]){
+    // get last argument
+    args* last_argument = get_last_argument();
+    // allocate memory for a new argument
+    if (number_of_arguments > 0)
+    {
+        last_argument->next = (args*)malloc(sizeof(args));
+        last_argument = last_argument->next;    
+    }
+    
+    // define args 
+    last_argument->argument.argc = 0;
+    for (size_t i = 0; i < 10; i++)
+    {
+        if (arg[i] != NULL)
+        {
+            last_argument->argument.arg[i] = (char*)malloc(sizeof(char)*96);
+            strcpy(last_argument->argument.arg[i], arg[i]);
+            last_argument->argument.argc++;
+        }
+        else{
+            break;
+        }
+    }
+    number_of_arguments++;
+}
+
+
+/* Args struct area */
+
 
 
 char* replaceWord(const char* s, const char* oldW,
@@ -63,153 +129,164 @@ char* replaceWord(const char* s, const char* oldW,
 
 int save_last_command(){
 
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+
     if (override_stdout_redirect)
     {
-        argv1[argc1 - 2] = ">";
+        last_arg->argument.arg[last_argc - 2] = ">";
     }
     else if(append_stdout_redirect){
-        argv1[argc1 - 2] = ">>";
+        last_arg->argument.arg[last_argc - 2] = ">>";
     }
     else if(stderr_redirect){
-        argv1[argc1 - 2] = "2>";
+        last_arg->argument.arg[last_argc - 2] = "2>";
     }
     
     strcpy(last_command, "");
-    int i = 0;
-    while (argv1[i] != NULL)
+    // int i = 0;
+
+    args* arg_ptr = *arguments;
+    while (arg_ptr != NULL)
     {
-        strcat(last_command, " ");
-        strcat(last_command, argv1[i]);
-        i++;
-    }
-    if(piping){
-        i = 0;
-        strcat(last_command, " ");
-        strcat(last_command, "|");
-        while (argv2[i] != NULL)
+        for(size_t i = 0; i < arg_ptr->argument.argc; i++)
         {
             strcat(last_command, " ");
-            strcat(last_command, argv2[i]);
-            i++;
+            strcat(last_command, arg_ptr->argument.arg[i]);
+        }
+        arg_ptr = arg_ptr->next;
+        if (arg_ptr != NULL)
+        {
+            strcat(last_command, " |");
         }
     }
     
 }
 
 
-int parse_first_part(){
-    /*
-        This Function parse the first part of the given command from the user.
-        first part == the command before a |.
-        it fills the argv1 array with tokenized commands.
-        It return 0 if the command is empty, 
-        else it returns 1.
-    */
-    used_last_command = 0;
+
+int parse_command(){
+
+    // init arguments struct
+    arguments = (args**)malloc(sizeof(args*));
+    *arguments = create_args();
+    number_of_arguments = 0;
     // An indicator when the user use a pipe in his command
     piping = 0;
+    // reset
+    number_of_pipes = 0;
     /* parse command line */
-    i = 0;
-    // tokenize the command string
+    int empty_command = 0;
+    // deep copy of the command in case the user typed '!!'
     char copy_command[1024];
-    strcpy(copy_command, command);
+    strcpy(copy_command, command);  
+    // tokenize the command string
     token = strtok (command," ");
+    // Dynamic allocation for argv
+    char* argv[10];
+    for (size_t i = 0; i < 10; i++)
+    {
+        argv[i] = NULL;
+    }
+    
+    int i = 0;
     while (token != NULL)
     {
-        if(i >= 10){
-            printf("Entered too much arguments, can only use 10 arguments! \n");
-            break;
-        }
+        empty_command = 1;
         if (!strcmp(token, "!!"))
         {
             // want to perform the last command, replace the !! with last command
             token = strtok(replaceWord(copy_command, token, last_command), " ");
             used_last_command = 1;
         }
-        
-        argv1[i] = token;
+        argv[i] = token;
         token = strtok (NULL, " ");
         i++;
-        // check whether the user want to use piping, if so break!
-        if (token && ! strcmp(token, "|")) {
+        // check for piping
+        if (token && ! strcmp(token, "|"))
+        {
+            add_argument(argv);
+            // reset argv
+            for (size_t i = 0; i < 10; i++)
+            {
+                argv[i] = NULL;
+            }
+            number_of_pipes++;
+            i = 0;
+            token = strtok (NULL, " ");
             piping = 1;
-            break;
         }
+        
     }
-    argv1[i] = NULL;
-    argc1 = i;
-
-    /* Is command empty */
-    if (argv1[0] == NULL)
-        return 0;
-    else
-        return 1;
+    // add the last argument
+    add_argument(argv);
+    return empty_command;
 }
 
-void parse_second_part(){
-    i = 0;
-    while (token!= NULL)
-    {
-        if(i >= 10){
-            printf("Entered too much arguments, can only use 10 arguments! \n");
-            break;
-        }
-        token = strtok (NULL, " ");
-        argv2[i] = token;
-        i++;
-    }
-    argv2[i] = NULL;
-}
+
 
 int check_amper(){
-    if (! strcmp(argv1[argc1 - 1], "&")) {
-        argv1[argc1 - 1] = NULL;
+
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (! strcmp(last_arg->argument.arg[last_argc - 1], "&"))
+    {
+        last_arg->argument.arg[last_argc - 2] = NULL;
         return 1;
     }
-    else 
-        return 0; 
+    return 0; 
 }
 
 int check_override_stdout_redirection(){
     /* Does command contains a '>'*/
-    if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], ">")) {
-        argv1[argc1 - 2] = NULL;
-        outfile = argv1[argc1 - 1];
+
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[last_argc - 2], ">"))
+    {
+        last_arg->argument.arg[last_argc - 2] = NULL;
+        outfile = last_arg->argument.arg[last_argc - 1];
         return 1;
     }
-    else 
-        return 0;
+    return 0;
 }
 
 int check_append_stdout_redirection(){
     /* Does command contains a '>>'*/
-    if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], ">>")) {
-        argv1[argc1 - 2] = NULL;
-        outfile = argv1[argc1 - 1];
+    
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[last_argc - 2], ">>"))
+    {
+        last_arg->argument.arg[last_argc - 2] = NULL;
+        outfile = last_arg->argument.arg[last_argc - 1];
         return 1;
     }
-    else 
-        return 0;
+    return 0;
 }
 
 int check_stderr_redirection(){
     /* Does command contains a '2>'*/
-    if (argc1 > 1 && ! strcmp(argv1[argc1 - 2], "2>")) {
-        argv1[argc1 - 2] = NULL;
-        outfile = argv1[argc1 - 1];
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[last_argc - 2], "2>"))
+    {
+        last_arg->argument.arg[last_argc - 2] = NULL;
+        outfile = last_arg->argument.arg[last_argc - 1];
         return 1;
     }
-    else 
-        return 0;
+    return 0;
 }
 
 int replace_prompt_name(){
     /* Does the command look like: prompt = new_prompt */
-    if (argc1 > 2 && ! strcmp(argv1[0] ,"prompt") && ! strcmp(argv1[1], "="))
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (last_argc > 2 && ! strcmp(last_arg->argument.arg[0] ,"prompt") && ! strcmp(last_arg->argument.arg[1], "="))
     {
         free(prompt_name);
-        prompt_name = (char*) malloc(sizeof(char)* sizeof(argv1[2]) + 1);
-        strcpy(prompt_name, argv1[2]);
+        prompt_name = (char*) malloc(sizeof(char)* sizeof(last_arg->argument.arg[2]) + 1);
+        strcpy(prompt_name, last_arg->argument.arg[2]);
         strcat(prompt_name, " ");
         return 1;
     }
@@ -220,17 +297,19 @@ int replace_prompt_name(){
 
 int echo(){
     /* Does the command look like: echo strings.. */
-    if (argc1 > 1 && ! strcmp(argv1[0], "echo"))
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[0], "echo"))
     {
-        if (! strcmp(argv1[1], "$?"))
+        if (! strcmp(last_arg->argument.arg[1], "$?"))
         {
             printf("%d \n", status);
             return 1;
         }
         
-        for (size_t i = 1; i < argc1; i++)
+        for (size_t i = 1; i < last_argc; i++)
         {
-            printf("%s ", argv1[i]);
+            printf("%s ", last_arg->argument.arg[i]);
         }
         printf("\n");
         return 1;
@@ -241,11 +320,14 @@ int echo(){
 
 int perform_cd(){
 
-    if (argc1 > 0 && ! strcmp(argv1[0], "cd"))
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+
+    if (last_argc > 0 && ! strcmp(last_arg->argument.arg[0], "cd"))
     {
         getcwd(path, 256);
         printf("Before: %s\n", path);       // Delete before submitting
-        if (argc1 == 1 || ! strcmp(argv1[1], ".."))
+        if (last_argc == 1 || ! strcmp(last_arg->argument.arg[1], ".."))
         {
             // Go back to parent
             chdir("..");
@@ -253,7 +335,7 @@ int perform_cd(){
         else {
             // Go to the desired path
             strcat(path, "/");
-            strcat(path, argv1[1]);
+            strcat(path, last_arg->argument.arg[1]);
             chdir(path);
         }
         getcwd(path, 256);
@@ -265,7 +347,9 @@ int perform_cd(){
 }
 
 int quit(){
-    if (argc1 > 0 && ! strcmp(argv1[0], "quit"))
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+    if (last_argc > 0 && ! strcmp(last_arg->argument.arg[0], "quit"))
     {
         return 1;
     }
@@ -275,12 +359,29 @@ int quit(){
 
 void int_handler(int signal){
     printf("You typed Control-C!\n");
-    // if(pid_1 != 0){
-    kill(pid_1, SIGINT);
-    printf("kill");
-    // }
+    if(pid_1 == 0){
+        // kill(pid_1, SIGINT);
+        printf("kill%d\n", pid_1);
+        exit(0);
+    }
     
 }
+
+void execute_pipes(){   //TODO 
+
+    // allocate file discriptors for piping
+    pipes_fd = (int*)malloc(sizeof(int) * 2 * number_of_pipes);
+    // create pipes
+    for (size_t i = 0; i < number_of_pipes; i++){
+        if(pipe(pipes_fd + i*2) < 0) {
+            perror("couldn't pipe");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+}
+
+
 
 int main() {
 
@@ -289,24 +390,17 @@ int main() {
     signal(SIGINT, int_handler);
     pid_1 = -1;
 
-
     while (1)
     {
         printf("%s", prompt_name);
         // wait for input from the user
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
-        
+
         // parse the given command, if 0 -> an empty command!
-        if (!parse_first_part()){
+        if (!parse_command()){
             continue;
         }
-
-        // Does command contain pipe -> parse the second part of the command
-        if (piping) {
-            parse_second_part();
-        }
-
 
         /* Check if the user wants to QUIT */
         if (quit())
