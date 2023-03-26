@@ -534,7 +534,56 @@ int set_env(){
     return 0;
 }
 
+int read_var(){
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
 
+    if (last_argc > 3 && !strcmp(last_arg->argument.arg[0], "echo") && !strcmp(last_arg->argument.arg[1], "Enter") && !strcmp(last_arg->argument.arg[2], "a") && !strcmp(last_arg->argument.arg[3], "string"))
+    {
+        // the user wants to define a new env variable
+        fgets(command, 1024, stdin);
+        command[strlen(command) - 1] = '\0';
+        // parse the given command, if 0 -> an empty command!
+        if (!parse_command()){
+            return 0;
+        }
+        args* last_arg = get_last_argument();
+        int last_argc = last_arg->argument.argc;
+        if (last_argc > 1 && ! strcmp(last_arg->argument.arg[0], "read"))
+        {
+            // save the variable name
+            char* var_name = (char*)malloc(sizeof(char)*sizeof(last_arg->argument.arg[1]));
+            strcpy(var_name, last_arg->argument.arg[1]);
+
+            // read the variable content
+            fgets(command, 1024, stdin);
+            command[strlen(command) - 1] = '\0';
+            // parse the given command, if 0 -> an empty command!
+            if (!parse_command()){
+                return 0;
+            }
+            args* last_arg = get_last_argument();
+            int last_argc = last_arg->argument.argc;
+            // set new environment variable
+            char* new_var = (char*) malloc(sizeof(char)*sizeof(last_arg->argument.arg));
+            strcpy(new_var, "");
+            int i = 0;
+            while (last_arg->argument.arg[i])
+            {
+                strcat(new_var, last_arg->argument.arg[i]);
+                strcat(new_var, " ");
+                i++;
+            }
+            
+            setenv(var_name, new_var, 1);
+            return 1;
+        }
+        return 0;
+
+    }
+    return 0;
+    
+}
 
 int main() {
 
@@ -584,6 +633,12 @@ int main() {
         {
             continue;
         }
+
+        if (read_var())
+        {
+            continue;
+        }
+        
 
         /* Echo command */
         if (echo())
