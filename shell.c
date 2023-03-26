@@ -28,6 +28,56 @@ char path[256];
 pid_t pid_1;
 struct args** arguments;
 int number_of_arguments;
+struct stack** command_history;
+int history_ptr;
+
+/* Command Stack area */
+typedef struct stack{
+    char* commands[20];
+    int first_idx, last_idx;
+}stack;
+
+
+void create_history(){
+    command_history = (stack**)malloc(sizeof(stack*));
+    *command_history = (stack*)malloc(sizeof(stack));
+    (*command_history)->first_idx = 0;
+    (*command_history)->last_idx = 0;
+}
+
+void push(char* command){
+
+    int first = (*command_history)->first_idx % 20;
+    int last = (*command_history)->last_idx % 20;
+    
+    if (first == last)
+    {
+        // first push
+        (*command_history)->commands[last] = (char*)malloc(sizeof(char)*30);
+        strcpy((*command_history)->commands[last], command);
+        (*command_history)->last_idx++;
+    }
+    else if(last == first - 1){
+        // stack is full
+        (*command_history)->first_idx++;
+        (*command_history)->last_idx++;
+        strcpy((*command_history)->commands[last], command);
+    }
+    else{
+        (*command_history)->commands[last] = (char*)malloc(sizeof(char)*30);
+        strcpy((*command_history)->commands[last], command);
+        (*command_history)->last_idx++;
+    }
+}
+
+
+char* get(int idx){
+    return (*command_history)->commands[idx];
+}
+
+
+/* Command Stack area */
+
 
 
 /* Args struct area */
@@ -145,7 +195,6 @@ int save_last_command(){
     }
     
     strcpy(last_command, "");
-    // int i = 0;
 
     args* arg_ptr = *arguments;
     while (arg_ptr != NULL)
@@ -161,6 +210,7 @@ int save_last_command(){
             strcat(last_command, " |");
         }
     }
+    push(last_command);
     
 }
 
@@ -591,6 +641,9 @@ int main() {
     strcpy(prompt_name, "hello: ");
     signal(SIGINT, int_handler);
     pid_1 = -1;
+    // create the history stack
+    history_ptr = 0;
+    create_history();
 
     while (1)
     {
