@@ -298,33 +298,75 @@ int replace_prompt_name(){
 
 int echo(){
     /* Does the command look like: echo strings.. */
-    args* last_arg = get_last_argument();
-    int last_argc = last_arg->argument.argc;
-    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[0], "echo"))
-    {
-        if (! strcmp(last_arg->argument.arg[1], "$?"))
-        {
-            printf("%d \n", status);
-            return 1;
-        }
+    args* ptr_arg = *arguments;
+    int ptr_argc = ptr_arg->argument.argc;
 
-        if (last_arg->argument.arg[1][0] == '$')
+    while (ptr_arg)
+    {
+        if (ptr_argc > 1 && ! strcmp(ptr_arg->argument.arg[0], "echo"))
         {
-            // get Environment variable
-            printf("%s \n", getenv(last_arg->argument.arg[1]+1));
-            return 1;
+            pid_t pid = fork();
+            if (pid == 0)
+            {
+                if (override_stdout_redirect) {
+                    fd = creat(outfile, 0660); 
+                    close (STDOUT_FILENO); 
+                    dup(fd); 
+                    close(fd); 
+                    /* stdout is now redirected */
+                } 
+                if (append_stdout_redirect){
+                    fd = open(outfile, O_RDWR | O_CREAT, 0666);
+                    lseek(fd, -1, SEEK_END);
+                    close(STDOUT_FILENO);
+                    dup(fd);
+                    close(fd);
+                }
+                /* redirection of Stderr: */
+                if (stderr_redirect){
+                    fd = creat(outfile, 0660); 
+                    close (STDERR_FILENO); 
+                    dup(fd); 
+                    close(fd); 
+                }
+                if (! strcmp(ptr_arg->argument.arg[1], "$?"))
+                {
+                    printf("%d \n", status);
+                    exit(0);
+                }
+
+                if (ptr_arg->argument.arg[1][0] == '$')
+                {
+                    // get Environment variable
+                    printf("%s \n", getenv(ptr_arg->argument.arg[1]+1));
+                    exit(0);
+                }
+                
+                int i = 1;
+                while (ptr_arg->argument.arg[i])
+                {
+                    printf("%s ", ptr_arg->argument.arg[i]);
+                    i++;
+                }
+                printf("\n");
+                exit(0);
+            }
+            else{
+                wait(&status);
+                return 1;
+            }
         }
-        
-        
-        for (size_t i = 1; i < last_argc; i++)
+        if (ptr_arg->next)
         {
-            printf("%s ", last_arg->argument.arg[i]);
+            // move to the next argument
+            ptr_arg = ptr_arg->next;
+            ptr_argc = ptr_arg->argument.argc;
         }
-        printf("\n");
-        return 1;
+        else{
+            return 0;
+        }
     }
-    else
-        return 0;
+    
 }
 
 int perform_cd(){
@@ -469,14 +511,24 @@ void execute_pipes(){   //TODO
 
 }
 
-int setEnv(){
+int set_env(){
     args* last_arg = get_last_argument();
     int last_argc = last_arg->argument.argc;
 
     if (last_argc > 2 && last_arg->argument.arg[0][0] == '$' && ! strcmp(last_arg->argument.arg[1], "="))
     {
         // set new environment variable
-        setenv(last_arg->argument.arg[0]+1, last_arg->argument.arg[2], 1);
+        char* new_var = (char*) malloc(sizeof(char)*sizeof(last_arg->argument.arg));
+        strcpy(new_var, "");
+        int i = 2;
+        while (last_arg->argument.arg[i])
+        {
+            strcat(new_var, last_arg->argument.arg[i]);
+            strcat(new_var, " ");
+            i++;
+        }
+        
+        setenv((last_arg->argument.arg[0] + 1), new_var, 1);
         return 1;
     }
     return 0;
@@ -546,7 +598,7 @@ int main() {
         }
 
         /* New Env var */
-        if (setEnv())
+        if (set_env())
         {
             continue;
         }
