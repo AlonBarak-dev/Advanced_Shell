@@ -378,6 +378,85 @@ void execute_pipes(){   //TODO
             exit(EXIT_FAILURE);
         }
     }
+    int idx = 0;
+    args* ptr_arg = *arguments;
+    pid_t pid;
+    while (ptr_arg)
+    {
+        pid = fork();
+        if (pid == 0)
+        {
+            // if not last argument
+            if (ptr_arg->next)
+            {
+                if (dup2(pipes_fd[idx+1], 1) < 0)
+                {
+                    perror("dup2");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            if (ptr_arg->next == NULL)
+            {
+                if (override_stdout_redirect) {
+                    fd = creat(outfile, 0660); 
+                    close (STDOUT_FILENO); 
+                    dup(fd); 
+                    close(fd); 
+                    /* stdout is now redirected */
+                } 
+                if (append_stdout_redirect){
+                    fd = open(outfile, O_RDWR | O_CREAT, 0666);
+                    lseek(fd, -1, SEEK_END);
+                    close(STDOUT_FILENO);
+                    dup(fd);
+                    close(fd);
+                }
+                /* redirection of Stderr: */
+                if (stderr_redirect){
+                    fd = creat(outfile, 0660); 
+                    close (STDERR_FILENO); 
+                    dup(fd); 
+                    close(fd); 
+                }
+            }
+            
+
+            // if not first command && j!= 2*number_of_pipes
+            if (idx != 0)
+            {
+                if (dup2(pipes_fd[idx-2], 0) < 0)
+                {
+                    perror("dup2");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            for (size_t i = 0; i < 2*number_of_pipes; i++)
+            {
+                close(pipes_fd[i]);
+            }
+            if (execvp(*(ptr_arg->argument.arg), ptr_arg->argument.arg) < 0)
+            {
+                perror(*ptr_arg->argument.arg);
+                exit(EXIT_FAILURE);
+            } 
+        }
+        else if (pid < 0)
+        {
+            perror("error");
+            exit(EXIT_FAILURE);
+        }
+        ptr_arg = ptr_arg->next;
+        idx += 2;
+    }
+
+    for (size_t i = 0; i < 2*number_of_pipes; i++)
+    {
+        close(pipes_fd[i]);
+    }
+
+    for(i = 0; i < number_of_pipes + 1; i++)
+        wait(&status);
+    
 
 }
 
@@ -443,55 +522,7 @@ int main() {
         {
             continue;
         }
-        
-        pid_1 = fork(); 
-        if (pid_1 == 0) { 
-            /* redirection of Stdout: : */
-            if (override_stdout_redirect) {
-                fd = creat(outfile, 0660); 
-                close (STDOUT_FILENO); 
-                dup(fd); 
-                close(fd); 
-                /* stdout is now redirected */
-            } 
-            if (append_stdout_redirect){
-                fd = open(outfile, O_RDWR | O_CREAT, 0666);
-                lseek(fd, -1, SEEK_END);
-                close(STDOUT_FILENO);
-                dup(fd);
-                close(fd);
-            }
-            /* redirection of Stderr: */
-            if (stderr_redirect){
-                fd = creat(outfile, 0660); 
-                close (STDERR_FILENO); 
-                dup(fd); 
-                close(fd); 
-            }
-            
-            if (piping) {
-                pipe (fildes);
-                if (fork() == 0) { 
-                    /* first component of command line */ 
-                    close(STDOUT_FILENO); 
-                    dup(fildes[1]); 
-                    close(fildes[1]); 
-                    close(fildes[0]); 
-                    /* stdout now goes to pipe */ 
-                    /* child process does command */ 
-                    execvp(argv1[0], argv1);
-                } 
-                /* 2nd command component of command line */ 
-                close(STDIN_FILENO);
-                dup(fildes[0]);
-                close(fildes[0]); 
-                close(fildes[1]); 
-                /* standard input now comes from pipe */ 
-                execvp(argv2[0], argv2);
-            } 
-            else
-                execvp(argv1[0], argv1);
-        }
+        execute_pipes();
         /* parent continues over here... */
         /* waits for child to exit if required */
         if (amper == 0)
