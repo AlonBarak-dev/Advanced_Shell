@@ -8,6 +8,7 @@
 #include "unistd.h"
 #include <string.h>
 #include <signal.h>
+#include <envz.h>
 
 // init params
 char command[1024];
@@ -306,6 +307,14 @@ int echo(){
             printf("%d \n", status);
             return 1;
         }
+
+        if (last_arg->argument.arg[1][0] == '$')
+        {
+            // get Environment variable
+            printf("%s \n", getenv(last_arg->argument.arg[1]+1));
+            return 1;
+        }
+        
         
         for (size_t i = 1; i < last_argc; i++)
         {
@@ -460,6 +469,19 @@ void execute_pipes(){   //TODO
 
 }
 
+int setEnv(){
+    args* last_arg = get_last_argument();
+    int last_argc = last_arg->argument.argc;
+
+    if (last_argc > 2 && last_arg->argument.arg[0][0] == '$' && ! strcmp(last_arg->argument.arg[1], "="))
+    {
+        // set new environment variable
+        setenv(last_arg->argument.arg[0]+1, last_arg->argument.arg[2], 1);
+        return 1;
+    }
+    return 0;
+}
+
 
 
 int main() {
@@ -522,6 +544,14 @@ int main() {
         {
             continue;
         }
+
+        /* New Env var */
+        if (setEnv())
+        {
+            continue;
+        }
+        
+
         execute_pipes();
         /* parent continues over here... */
         /* waits for child to exit if required */
