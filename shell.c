@@ -19,7 +19,9 @@ int number_of_pipes;
 char *token;
 char* prompt_name;
 int i;
-char *outfile;
+char *stdout_outfile;
+char* stderr_outfile;
+int red_std_idx, red_err_idx, red_std_in_arg_idx, red_err_in_arg_idx;
 int fd, amper, override_stdout_redirect, append_stdout_redirect, stderr_redirect, piping, retid, status, argc1;
 int fildes[2];
 int *pipes_fd;
@@ -180,23 +182,44 @@ char* replaceWord(const char* s, const char* oldW,
 
 int save_last_command(){
 
-    args* last_arg = get_last_argument();
-    int last_argc = last_arg->argument.argc;
+    args* arg_ptr;
+    int argc;
 
     if (override_stdout_redirect)
     {
-        last_arg->argument.arg[last_argc - 2] = ">";
+        arg_ptr = *arguments;
+        int idx = 0;
+        while (idx < red_std_idx)
+        {
+            arg_ptr = arg_ptr->next;
+        }
+        argc = arg_ptr->argument.argc;
+        arg_ptr->argument.arg[red_std_in_arg_idx] = ">";
     }
     else if(append_stdout_redirect){
-        last_arg->argument.arg[last_argc - 2] = ">>";
+        arg_ptr = *arguments;
+        int idx = 0;
+        while (idx < red_std_idx)
+        {
+            arg_ptr = arg_ptr->next;
+        }
+        argc = arg_ptr->argument.argc;
+        arg_ptr->argument.arg[red_std_in_arg_idx] = ">>";
     }
-    else if(stderr_redirect){
-        last_arg->argument.arg[last_argc - 2] = "2>";
+    if(stderr_redirect){
+        arg_ptr = *arguments;
+        int idx = 0;
+        while (idx < red_std_idx)
+        {
+            arg_ptr = arg_ptr->next;
+        }
+        argc = arg_ptr->argument.argc;
+        arg_ptr->argument.arg[red_err_in_arg_idx] = "2>";
     }
     
     strcpy(last_command, "");
 
-    args* arg_ptr = *arguments;
+    arg_ptr = *arguments;
     while (arg_ptr != NULL)
     {
         for(size_t i = 0; i < arg_ptr->argument.argc; i++)
@@ -291,40 +314,75 @@ int check_amper(){
 int check_override_stdout_redirection(){
     /* Does command contains a '>'*/
 
-    args* last_arg = get_last_argument();
-    int last_argc = last_arg->argument.argc;
-    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[last_argc - 2], ">"))
+    args* arg_ptr = *arguments;
+    int argc = arg_ptr->argument.argc;
+    red_std_idx = 0;
+    while (arg_ptr)
     {
-        last_arg->argument.arg[last_argc - 2] = NULL;
-        outfile = last_arg->argument.arg[last_argc - 1];
-        return 1;
+        argc = arg_ptr->argument.argc;
+        for (size_t i = 1; i < argc - 1; i++)
+        {
+            if (argc > 1 && ! strcmp(arg_ptr->argument.arg[i], ">"))
+            {
+                arg_ptr->argument.arg[i] = NULL;
+                stdout_outfile = arg_ptr->argument.arg[i + 1];
+                red_std_in_arg_idx = i;
+                return 1;
+            }   
+        }
+        arg_ptr = arg_ptr->next;
+        red_std_idx++;
     }
+    red_std_idx = -1;
     return 0;
 }
 
 int check_append_stdout_redirection(){
     /* Does command contains a '>>'*/
     
-    args* last_arg = get_last_argument();
-    int last_argc = last_arg->argument.argc;
-    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[last_argc - 2], ">>"))
+    args* arg_ptr = *arguments;
+    int argc = arg_ptr->argument.argc;
+    red_std_idx = 0;
+    while (arg_ptr)
     {
-        last_arg->argument.arg[last_argc - 2] = NULL;
-        outfile = last_arg->argument.arg[last_argc - 1];
-        return 1;
+        argc = arg_ptr->argument.argc;
+        for (size_t i = 1; i < argc - 1; i++)
+        {
+            if (argc > 1 && ! strcmp(arg_ptr->argument.arg[i], ">>"))
+            {
+                arg_ptr->argument.arg[i] = NULL;
+                stdout_outfile = arg_ptr->argument.arg[i + 1];
+                red_std_in_arg_idx = i;
+                return 1;
+            }   
+        }
+        arg_ptr = arg_ptr->next;
+        red_std_idx++;
     }
+    red_std_idx = -1;
     return 0;
 }
 
 int check_stderr_redirection(){
     /* Does command contains a '2>'*/
-    args* last_arg = get_last_argument();
-    int last_argc = last_arg->argument.argc;
-    if (last_argc > 1 && ! strcmp(last_arg->argument.arg[last_argc - 2], "2>"))
+    args* arg_ptr = *arguments;
+    int argc = arg_ptr->argument.argc;
+    red_err_idx = 0;
+    while (arg_ptr)
     {
-        last_arg->argument.arg[last_argc - 2] = NULL;
-        outfile = last_arg->argument.arg[last_argc - 1];
-        return 1;
+        argc = arg_ptr->argument.argc;
+        for (size_t i = 1; i < argc - 1; i++)
+        {
+            if (argc > 1 && arg_ptr->argument.arg[i] != NULL && ! strcmp(arg_ptr->argument.arg[i], "2>"))
+            {
+                arg_ptr->argument.arg[i] = NULL;
+                stderr_outfile = arg_ptr->argument.arg[i + 1];
+                red_err_in_arg_idx = i;
+                return 1;
+            }   
+        }
+        arg_ptr = arg_ptr->next;
+        red_err_idx++;
     }
     return 0;
 }
@@ -359,14 +417,14 @@ int echo(){
             if (pid == 0)
             {
                 if (override_stdout_redirect) {
-                    fd = creat(outfile, 0660); 
+                    fd = creat(stdout_outfile, 0660); 
                     close (STDOUT_FILENO); 
                     dup(fd); 
                     close(fd); 
                     /* stdout is now redirected */
                 } 
                 if (append_stdout_redirect){
-                    fd = open(outfile, O_RDWR | O_CREAT, 0666);
+                    fd = open(stdout_outfile, O_RDWR | O_CREAT, 0666);
                     lseek(fd, -1, SEEK_END);
                     close(STDOUT_FILENO);
                     dup(fd);
@@ -374,7 +432,7 @@ int echo(){
                 }
                 /* redirection of Stderr: */
                 if (stderr_redirect){
-                    fd = creat(outfile, 0660); 
+                    fd = creat(stderr_outfile, 0660); 
                     close (STDERR_FILENO); 
                     dup(fd); 
                     close(fd); 
@@ -480,6 +538,7 @@ void execute_pipes(){   //TODO
         }
     }
     int idx = 0;
+    int arg_idx = 0;
     args* ptr_arg = *arguments;
     pid_t pid;
     while (ptr_arg)
@@ -496,32 +555,34 @@ void execute_pipes(){   //TODO
                     exit(EXIT_FAILURE);
                 }
             }
-            if (ptr_arg->next == NULL)
+            if (arg_idx == red_std_idx)
             {
                 if (override_stdout_redirect) {
-                    fd = creat(outfile, 0660); 
+                    fd = creat(stdout_outfile, 0660); 
                     close (STDOUT_FILENO); 
                     dup(fd); 
                     close(fd); 
                     /* stdout is now redirected */
                 } 
                 if (append_stdout_redirect){
-                    fd = open(outfile, O_RDWR | O_CREAT, 0666);
+                    fd = open(stdout_outfile, O_RDWR | O_CREAT, 0666);
                     lseek(fd, -1, SEEK_END);
                     close(STDOUT_FILENO);
                     dup(fd);
                     close(fd);
                 }
+            }
+            if (arg_idx == red_err_idx)
+            {
                 /* redirection of Stderr: */
                 if (stderr_redirect){
-                    fd = creat(outfile, 0660); 
+                    fd = creat(stderr_outfile, 0660); 
                     close (STDERR_FILENO); 
                     dup(fd); 
                     close(fd); 
                 }
             }
             
-
             // if not first command && j!= 2*number_of_pipes
             if (idx != 0)
             {
@@ -548,6 +609,7 @@ void execute_pipes(){   //TODO
         }
         ptr_arg = ptr_arg->next;
         idx += 2;
+        arg_idx++;
     }
 
     for (size_t i = 0; i < 2*number_of_pipes; i++)
@@ -672,14 +734,10 @@ int main() {
         append_stdout_redirect = 0;
         stderr_redirect = 0;
 
-        if (!(override_stdout_redirect = check_override_stdout_redirection()))
-        {
-            if (!(append_stdout_redirect = check_append_stdout_redirection()))
-            {
-                stderr_redirect = check_stderr_redirection();
-            }
-            
+        if (!(override_stdout_redirect = check_override_stdout_redirection())){
+            append_stdout_redirect = check_append_stdout_redirection();
         }
+        stderr_redirect = check_stderr_redirection();
 
         /* Replace prompt name ? */
         if (replace_prompt_name())
