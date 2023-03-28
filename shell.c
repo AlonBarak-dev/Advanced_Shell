@@ -192,6 +192,7 @@ int save_last_command(){
         while (idx < red_std_idx)
         {
             arg_ptr = arg_ptr->next;
+            idx++;
         }
         argc = arg_ptr->argument.argc;
         arg_ptr->argument.arg[red_std_in_arg_idx] = ">";
@@ -202,6 +203,7 @@ int save_last_command(){
         while (idx < red_std_idx)
         {
             arg_ptr = arg_ptr->next;
+            idx++;
         }
         argc = arg_ptr->argument.argc;
         arg_ptr->argument.arg[red_std_in_arg_idx] = ">>";
@@ -212,6 +214,7 @@ int save_last_command(){
         while (idx < red_std_idx)
         {
             arg_ptr = arg_ptr->next;
+            idx++;
         }
         argc = arg_ptr->argument.argc;
         arg_ptr->argument.arg[red_err_in_arg_idx] = "2>";
