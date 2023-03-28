@@ -46,6 +46,11 @@ void create_history(){
     *command_history = (stack*)malloc(sizeof(stack));
     (*command_history)->first_idx = 0;
     (*command_history)->last_idx = 0;
+    for (size_t i = 0; i < 20; i++)
+    {
+        (*command_history)->commands[i] = NULL;
+    }
+    
 }
 
 void push(char* command){
@@ -526,6 +531,72 @@ void int_handler(int signal){
     
 }
 
+// int if_else(){
+
+//     args* arg_ptr = *arguments;
+//     int argc;
+//     args* if_command, *then_command, *else_command, *structure;
+//     int cont = 0;
+//     // get the IF command
+//     while (arg_ptr)
+//     {
+//         argc = arg_ptr->argument.argc;
+//         if (! strcmp(arg_ptr->argument.arg[0], "if"))
+//         {
+//             strcpy(if_command, "");
+//             for (size_t i = 1; i < argc; i++)
+//             {
+//                 strcat(if_command, arg_ptr->argument.arg[i]);
+//                 strcat(if_command, " ");
+//             }
+//             cont = 1;
+//         }
+//     }
+//     // if found an IF statement, continue - else return 0
+//     if (!cont)
+//     {
+//         return 0;
+//     }
+//     if_command = *arguments;
+    
+//     // except a 'then' string
+//     fgets(command, 1024, stdin);
+//     command[strlen(command) - 1] = '\0';
+//     parse_command();
+    
+//     structure = *arguments;
+//     if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "then")){
+//         // except a command :
+//         fgets(command, 1024, stdin);
+//         command[strlen(command) - 1] = '\0';
+//         parse_command();
+//         then_command = *arguments;
+//     }
+//     else{
+//         cont = 0;
+//     }
+
+//     // must have a 'then' command
+//     if (!cont)
+//     {
+//         return 0;
+//     }
+    
+//     // except a 'else' | 'fi' string
+//     fgets(command, 1024, stdin);
+//     command[strlen(command) - 1] = '\0';
+//     parse_command();
+
+//     structure = *arguments;
+//     if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "else")){
+//         return 1;
+//     }
+    
+//     return 0;
+// }
+
+
+
 void execute_pipes(){   //TODO 
 
     // allocate file discriptors for piping
@@ -697,6 +768,77 @@ int read_var(){
     
 }
 
+
+int traverse_history(){
+
+    if (command[2] == 'A')
+    {   
+        int history_idx = 0;
+        if ((*command_history)->last_idx - 1 < 0)
+        {
+            history_idx = (-((*command_history)->last_idx - 1)) % (-20);
+        }
+        else{
+            history_idx = ((*command_history)->last_idx - 1) % 20;
+        }
+        char* hist_command = get(history_idx);
+        printf("\033[1A");//line up
+		printf("\x1b[2K");//delete line
+        if(hist_command == NULL){
+            return 0;
+        }
+        printf("%s %s", prompt_name, hist_command);
+        memset(command, '\0', 1024);
+        fgets(command, 1024, stdin);
+        command[strlen(command) - 1] = '\0';
+        while (command[2] != '\000')
+        {
+            switch (command[2])
+            {
+                case 'A':
+                    if (history_idx == (*command_history)->first_idx)
+                    {
+                        printf("\033[1A");//line up
+		                printf("\x1b[2K");//delete line 
+                        printf("%s %s", prompt_name, hist_command);
+                    }
+                    else{
+                        history_idx = (history_idx - 1) % 20;
+                        hist_command = get(history_idx);
+                        printf("\033[1A");//line up
+		                printf("\x1b[2K");//delete line
+                        printf("%s %s", prompt_name, hist_command);
+                    }
+                    break;
+                case 'B':
+                    if (history_idx == (*command_history)->last_idx - 1)
+                    {
+                        printf("\033[1A");//line up
+		                printf("\x1b[2K");//delete line
+                        printf("%s %s", prompt_name, hist_command);
+                    }
+                    else{
+                        history_idx = (history_idx + 1) % 20;
+                        hist_command = get(history_idx);
+                        printf("\033[1A");//line up
+		                printf("\x1b[2K");//delete line
+                        printf("%s %s", prompt_name, hist_command);
+                    }
+                    break;
+                default:
+                    break;
+            }
+            memset(command, '\0', 1024);
+            fgets(command, 1024, stdin);
+            command[strlen(command) - 1] = '\0';
+        }
+        strcpy(command, hist_command);
+        return 1;
+    }
+    return 1;
+}
+
+
 int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
@@ -713,6 +855,11 @@ int main() {
         // wait for input from the user
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
+
+        if(!traverse_history()){
+            continue;
+        }
+        
 
         // parse the given command, if 0 -> an empty command!
         if (!parse_command()){
@@ -742,11 +889,13 @@ int main() {
         /* Replace prompt name ? */
         if (replace_prompt_name())
         {
+            save_last_command();
             continue;
         }
 
         if (read_var())
         {
+            save_last_command();
             continue;
         }
         
@@ -754,18 +903,21 @@ int main() {
         /* Echo command */
         if (echo())
         {
+            save_last_command();
             continue;
         }
         
         /* CD command */
         if (perform_cd())
         {
+            save_last_command();
             continue;
         }
 
         /* New Env var */
         if (set_env())
         {
+            save_last_command();
             continue;
         }
         
@@ -779,7 +931,5 @@ int main() {
         // save the last command
 
         save_last_command();
-        
-        
     }
 }

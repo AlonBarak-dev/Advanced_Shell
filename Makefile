@@ -2,4 +2,4 @@ run:
 	gcc -o myshell shell.c
 
 clean:
-	rm myshell *.txt
+	rm myshell test *.txt

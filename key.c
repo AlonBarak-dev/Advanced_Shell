@@ -1,11 +1,10 @@
-//https://stackoverflow.com/questions/10463201/getch-and-arrow-codes
 #include <stdio.h>
 
 int main()
 {
 	int c,n = 0;
 
-	while (( c=getchar()) != 'Q')
+	while (( c=getchar()) != 10)
 	{
 		if (c == '\033')
 		{
