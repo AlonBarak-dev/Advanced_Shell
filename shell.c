@@ -28,6 +28,7 @@ int *pipes_fd;
 char *argv1[10], *argv2[10];
 char path[256];
 pid_t pid_1;
+pid_t pid;
 struct args** arguments;
 int number_of_arguments;
 struct stack** command_history;
@@ -521,11 +522,7 @@ int quit(){
 
 void int_handler(int signal){
     printf("You typed Control-C!\n");
-    if(pid_1 == 0){
-        // kill(pid_1, SIGINT);
-        printf("kill%d\n", pid_1);
-        exit(0);
-    }
+    kill(SIGINT, pid);
     
 }
 
@@ -543,7 +540,7 @@ void execute_pipes(){   //TODO
     int idx = 0;
     int arg_idx = 0;
     args* ptr_arg = *arguments;
-    pid_t pid;
+    
     while (ptr_arg)
     {
         pid = fork();
