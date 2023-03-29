@@ -471,6 +471,10 @@ int echo(){
                 int i = 1;
                 while (ptr_arg->argument.arg[i])
                 {
+                    if (ptr_arg->argument.arg[i][0] == '$')
+                    {
+                        ptr_arg->argument.arg[i] = getenv(ptr_arg->argument.arg[i]+1);
+                    }
                     printf("%s ", ptr_arg->argument.arg[i]);
                     i++;
                 }
