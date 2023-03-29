@@ -791,7 +791,7 @@ int traverse_history(){
         memset(command, '\0', 1024);
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
-        while (command[2] != '\000')
+        while (command[2] != '\000' && command[0] != 'Q')
         {
             switch (command[2])
             {
@@ -832,7 +832,14 @@ int traverse_history(){
             fgets(command, 1024, stdin);
             command[strlen(command) - 1] = '\0';
         }
-        strcpy(command, hist_command);
+        if (command[0] != 'Q')
+        {
+            strcpy(command, hist_command);
+        }
+        else{
+            return 0;
+        }
+        
         return 1;
     }
     return 1;
