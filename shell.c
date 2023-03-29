@@ -10,6 +10,13 @@
 #include <signal.h>
 #include <envz.h>
 
+#define IF_STATEMENT 0
+#define THEN_STATEMENT 1
+#define THEN_BODY 2
+#define ELSE_STATEMENT 3
+#define ELSE_BODY 4
+#define FI_STATEMENT 5
+
 // init params
 char command[1024];
 char last_command[1024];
@@ -33,6 +40,8 @@ struct args** arguments;
 int number_of_arguments;
 struct stack** command_history;
 int history_ptr;
+int if_command_result, if_status;
+int stdout_saved;
 
 /* Command Stack area */
 typedef struct stack{
@@ -508,6 +517,7 @@ int perform_cd(){
         }
         getcwd(path, 256);
         printf("After: %s\n", path);    // Delete before submitting
+        status = 0;
         return 1;
     }
     return 0;
@@ -531,69 +541,73 @@ void int_handler(int signal){
     
 }
 
-// int if_else(){
+int if_else(){
 
-//     args* arg_ptr = *arguments;
-//     int argc;
-//     args* if_command, *then_command, *else_command, *structure;
-//     int cont = 0;
-//     // get the IF command
-//     while (arg_ptr)
-//     {
-//         argc = arg_ptr->argument.argc;
-//         if (! strcmp(arg_ptr->argument.arg[0], "if"))
-//         {
-//             strcpy(if_command, "");
-//             for (size_t i = 1; i < argc; i++)
-//             {
-//                 strcat(if_command, arg_ptr->argument.arg[i]);
-//                 strcat(if_command, " ");
-//             }
-//             cont = 1;
-//         }
-//     }
-//     // if found an IF statement, continue - else return 0
-//     if (!cont)
-//     {
-//         return 0;
-//     }
-//     if_command = *arguments;
+    args* arg_ptr = *arguments;
+    int argc;
+    args* if_command, *then_command, *else_command, *structure;
+    int cont = 0;
+    // get the IF command
+    while (arg_ptr)
+    {
+        argc = arg_ptr->argument.argc;
+        if (! strcmp(arg_ptr->argument.arg[0], "if"))
+        {
+            if_command = (args*)malloc(sizeof(args));
+            // if_command->argument.arg[0] = (char*) malloc(sizeof(char)*sizeof(arg_ptr->argument.arg[0]));
+            strcpy(if_command->argument.arg[0], "");
+            for (size_t i = 1; i < argc; i++)
+            {
+                strcat(if_command->argument.arg[0], arg_ptr->argument.arg[i]);
+                strcat(if_command->argument.arg[0], " ");
+                if_command->argument.argc++;
+            }
+            cont = 1;
+        }
+        arg_ptr = arg_ptr->next;
+    }
+    // if found an IF statement, continue - else return 0
+    if (!cont)
+    {
+        return 0;
+    }
     
-//     // except a 'then' string
-//     fgets(command, 1024, stdin);
-//     command[strlen(command) - 1] = '\0';
-//     parse_command();
     
-//     structure = *arguments;
-//     if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "then")){
-//         // except a command :
-//         fgets(command, 1024, stdin);
-//         command[strlen(command) - 1] = '\0';
-//         parse_command();
-//         then_command = *arguments;
-//     }
-//     else{
-//         cont = 0;
-//     }
+    // except a 'then' string
+    fgets(command, 1024, stdin);
+    command[strlen(command) - 1] = '\0';
+    parse_command();
+    
+    structure = *arguments;
+    if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "then")){
+        // except a command :
+        fgets(command, 1024, stdin);
+        command[strlen(command) - 1] = '\0';
+        parse_command();
+        then_command = *arguments;
+    }
+    else{
+        cont = 0;
+    }
 
-//     // must have a 'then' command
-//     if (!cont)
-//     {
-//         return 0;
-//     }
+    // must have a 'then' command
+    if (!cont)
+    {
+        return 0;
+    }
     
-//     // except a 'else' | 'fi' string
-//     fgets(command, 1024, stdin);
-//     command[strlen(command) - 1] = '\0';
-//     parse_command();
+    // except a 'else' | 'fi' string
+    fgets(command, 1024, stdin);
+    command[strlen(command) - 1] = '\0';
+    parse_command();
 
-//     structure = *arguments;
-//     if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "else")){
-//         return 1;
-//     }
+    structure = *arguments;
+    if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "else")){
+        return 1;
+    }
     
-//     return 0;
-// }
+    return 0;
+}
 
 
 
@@ -712,6 +726,7 @@ int set_env(){
         }
         
         setenv((last_arg->argument.arg[0] + 1), new_var, 1);
+        status = 0;
         return 1;
     }
     return 0;
@@ -759,6 +774,7 @@ int read_var(){
             }
             
             setenv(var_name, new_var, 1);
+            status = 0;
             return 1;
         }
         return 0;
@@ -845,6 +861,58 @@ int traverse_history(){
     return 1;
 }
 
+int get_state(){
+
+    args* arg_ptr = *arguments;
+    int argc = arg_ptr->argument.argc;
+    // check for start of an IF statement
+    if (if_command_result == -1 && argc > 0 && ! strcmp(arg_ptr->argument.arg[0], "if"))
+    {
+        // Enter an IF statement state
+        // delete the 'if' sub-string
+        for (size_t i = 0; i < argc - 1; i++)
+        {
+            arg_ptr->argument.arg[i] = arg_ptr->argument.arg[i+1];
+        }     
+        arg_ptr->argument.arg[argc-1]= NULL;
+        arg_ptr->argument.argc--;
+        // change stdout file descriptor
+        stdout_saved = dup(STDOUT_FILENO);
+        fd = creat("/dev/null", 0660); 
+        close (STDOUT_FILENO); 
+        dup(fd); 
+        close(fd); 
+        return IF_STATEMENT;
+    }
+    // check for 'then'
+    if (if_command_result == IF_STATEMENT && argc > 0 && ! strcmp(arg_ptr->argument.arg[0], "then"))
+    {
+        // restore the stdout fd:
+        fflush(stdout);
+        dup2(stdout_saved, 1);
+        close(stdout_saved);
+        return THEN_STATEMENT;
+    }
+    // CHECK FOR THEN BODY:
+    if ((if_command_result == THEN_STATEMENT || if_command_result == THEN_BODY) && argc > 0 && strcmp(arg_ptr->argument.arg[0], "else") != 0 && strcmp(arg_ptr->argument.arg[0], "fi") != 0)
+    {
+        return THEN_BODY;
+    }
+    if (if_command_result == THEN_BODY && argc > 0 && ! strcmp(arg_ptr->argument.arg[0], "else"))
+    {
+        return ELSE_STATEMENT;
+    }
+    if ((if_command_result == ELSE_STATEMENT || if_command_result == ELSE_BODY) && argc > 0 && strcmp(arg_ptr->argument.arg[0], "fi") != 0)
+    {
+        return ELSE_BODY;
+    }
+    if ((if_command_result == THEN_BODY || if_command_result == ELSE_BODY) && argc > 0 && !strcmp(arg_ptr->argument.arg[0], "fi"))
+    {
+        return FI_STATEMENT;
+    }
+
+}
+
 
 int main() {
 
@@ -852,13 +920,18 @@ int main() {
     strcpy(prompt_name, "hello: ");
     signal(SIGINT, int_handler);
     pid_1 = -1;
+    if_command_result = -1;
     // create the history stack
     history_ptr = 0;
     create_history();
 
     while (1)
     {
-        printf("%s", prompt_name);
+        if (if_command_result == -1)
+        {
+            printf("%s", prompt_name);
+        }
+        
         // wait for input from the user
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
@@ -866,12 +939,31 @@ int main() {
         if(!traverse_history()){
             continue;
         }
-        
 
         // parse the given command, if 0 -> an empty command!
         if (!parse_command()){
             continue;
         }
+        
+        if_command_result = get_state();
+        if (if_command_result == THEN_STATEMENT || if_command_result == ELSE_STATEMENT)
+        {
+            continue;
+        }
+        else if(if_command_result == THEN_BODY && if_status != 0){
+            continue;
+        }
+        else if (if_command_result == ELSE_BODY && if_status == 0)
+        {
+            continue;
+        }
+        
+        else if (if_command_result == FI_STATEMENT){
+            // if-else body is done
+            if_command_result = -1; // reset
+            continue;
+        }
+        
 
         /* Check if the user wants to QUIT */
         if (quit())
@@ -934,6 +1026,12 @@ int main() {
         /* waits for child to exit if required */
         if (amper == 0)
             retid = wait(&status);
+        
+        if (if_command_result == IF_STATEMENT)
+        {
+            if_status = status;
+        }
+        
         
         // save the last command
 
