@@ -82,4 +82,22 @@ hello: cd
 /home/alon/Documents/Advanced_Programming/Ex1
 ```
 
+## '!!' command
+> This command allows thw user to re-execute the last command.
+
+```C
+hello: ls
+shell.c myshell
+hello: !!
+shell.c myshell
+```
+
+```C
+hello: ls
+shell.c myshell
+hello: !! > log.txt     // will execute 'ls > log.txt'
+hello:
+```
+
+
 
