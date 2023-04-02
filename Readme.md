@@ -83,7 +83,7 @@ hello: cd
 ```
 
 ## '!!' command
-> This command allows thw user to re-execute the last command.
+> This command allows the user to re-execute the last command.
 
 ```C
 hello: ls
@@ -99,5 +99,43 @@ hello: !! > log.txt     // will execute 'ls > log.txt'
 hello:
 ```
 
+## Exiting from the shell
+> If you wish to exit the shell program, type the next command:
 
+```C 
+hello: quit
+```
+
+## Killing child processes 
+> if you executed a process from within the shell and you wish to kill/stop it, 
+> follow the below instructions:
+
+```C
+hello: python3 test.py      // this will run a python script that sleeps for 10s
+// Now press CTRL-C to kill the above process
+^C You typed Control-C!
+hello:      // Back to the shell
+```
+
+> p.s this will not help in case of using '&'
+
+
+## Multi-Piping
+> To use multi-piping for executing multiple commands in a pipline use the '|' symbol
+
+This command will execute the 'ls -l' and then 'grep user_name' and finally 'wc -l'.
+Eventually the final output is redirected into the log.txt file.
+
+```C
+hello: ls -l | grep user_name | wc -l > log.txt
+hello:
+```
+
+This command will result in an empty output since the input for the 'grep' command 
+is being redirected to 'log.txt'.
+
+```C
+hello: ls -l > log.txt | grep user_name
+hello:
+```
 
