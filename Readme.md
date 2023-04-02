@@ -19,3 +19,15 @@ hello: ls -l 2> err.txt     // will redirect the stderr output to err.txt
 ```C
 hello: ls -l > log.txt 2> err.txt       // will redirect both stdout and stderr to log.txt and err.txt, will work for '>>' too.
 ```
+
+## Renaming the Prompt
+> To rename the prompt, please execute the below command:
+
+```C
+hello: prompt = new_prompt_name
+```
+
+> This command results in a new prompt name:
+```C 
+new_prompt_name |
+```
