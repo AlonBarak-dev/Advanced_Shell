@@ -1,5 +1,16 @@
 # Advanced Programming - Shell Programming
 
+## How to run?
+> First, you need to compile the program using the makefile provided in this repo.
+run:
+```
+make
+```
+later, run:
+```
+./myshell
+```
+
 ## Redirection
 > To perform Redirection using the '>' , '>>' , '2>' operators you can use the below example:
 
@@ -139,3 +150,101 @@ hello: ls -l > log.txt | grep user_name
 hello:
 ```
 
+## Setting & getting Environment variables
+> To set a new Environment variable you should use the next commands:
+
+Method 1.
+
+```C
+hello: $env_var = value
+```
+
+Method 2.
+
+```C
+hello: echo Enter a string
+read env_var
+value
+hello:
+```
+
+> To get the value of an environment variable use:
+
+```C
+hello: echo $env_var
+```
+
+
+## Navigate between past commands
+> If you wish to navigate/execute past commands follow the below instructions:
+
+1. Once you executed some commands you will be able to go back up to 20 commands.
+2. Use the up/down arrows to navigate.
+3. To start navigating press the Up arrow and then press Enter.
+4. Then, you can go back and forward using the arrows and Enter.
+
+```C 
+hello: ls
+shell.c myshell
+hello: // press the Up arrow and then press Enter
+hello: ls
+```
+
+5. To execute the command you on, press Enter.
+
+```C 
+hello: ls
+shell.c myshell
+hello: // press the Up arrow and then press Enter
+hello: ls   // press another Enter
+shell.c myshell
+```
+
+6. To exit History mode, press Q and then Enter or execute a history command.
+
+```C 
+hello: ls
+shell.c myshell
+hello: // press the Up arrow and then press Enter
+hello: ls   // press Q and then Enter -> hello: lsQ & Enter
+```
+
+## If-Else commands
+> In this shell you can also write a complete If-Else component.
+> The shell will execute the IF statement, if its status is 0 it will execute all commands 
+> that appear in between the 'then' and 'else'/'fi' statements.
+> If the status isn't 0, it will execute the commands after the 'else' (if appear).
+
+```C
+hello: if ls -l     // assume 'ls -l' status is 0.
+then
+echo hello world
+hello world     // preform the 'then' commands
+ls 
+shell.c myshell
+.
+.
+.
+else
+echo bye world
+ls -l
+echo Those commands are being ignored!
+fi
+```
+
+
+```C
+hello: if ls -l     // assume 'ls -l' status isn't 0.
+then
+echo hello world
+echo Those commands are being ignored!
+ls 
+else
+echo bye world
+bye world
+ls
+shell.c myshell
+echo Those commands are being executed!
+Those commands are being executed!
+fi
+```
