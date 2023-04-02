@@ -56,4 +56,30 @@ hello: echo $?
 0       // means success, other codes mean failure
 ```
 
+## 'CD' command
+> 'CD' command allows the user to navigate between folders easily. follow the below instructions:
+
+```C
+hello: pwd
+/home/alon/Documents/Advanced_Programming/Ex1/task_shell
+hello: cd test_folder       // navigating to a folder
+hello: pwd
+/home/alon/Documents/Advanced_Programming/Ex1/task_shell/test_folder
+```
+
+```C
+hello: pwd
+/home/alon/Documents/Advanced_Programming/Ex1/task_shell
+hello: cd ..
+hello: pwd
+/home/alon/Documents/Advanced_Programming/Ex1
+```
+
+```C
+hello: pwd
+/home/alon/Documents/Advanced_Programming/Ex1/task_shell
+hello: cd
+/home/alon/Documents/Advanced_Programming/Ex1
+```
+
 

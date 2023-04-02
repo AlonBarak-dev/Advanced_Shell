@@ -508,7 +508,7 @@ int perform_cd(){
     if (last_argc > 0 && ! strcmp(last_arg->argument.arg[0], "cd"))
     {
         getcwd(path, 256);
-        printf("Before: %s\n", path);       // Delete before submitting
+        // printf("Before: %s\n", path);       // Delete before submitting
         if (last_argc == 1 || ! strcmp(last_arg->argument.arg[1], ".."))
         {
             // Go back to parent
@@ -521,7 +521,7 @@ int perform_cd(){
             chdir(path);
         }
         getcwd(path, 256);
-        printf("After: %s\n", path);    // Delete before submitting
+        // printf("After: %s\n", path);    // Delete before submitting
         status = 0;
         return 1;
     }
