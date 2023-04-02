@@ -323,7 +323,8 @@ int check_amper(){
     int last_argc = last_arg->argument.argc;
     if (! strcmp(last_arg->argument.arg[last_argc - 1], "&"))
     {
-        last_arg->argument.arg[last_argc - 2] = NULL;
+        last_arg->argument.arg[last_argc - 1] = NULL;
+        last_arg->argument.argc--;
         return 1;
     }
     return 0; 
@@ -542,7 +543,6 @@ int quit(){
 void int_handler(int signal){
     printf("You typed Control-C!\n");
     kill(SIGINT, pid);
-    
 }
 
 int if_else(){
@@ -706,9 +706,11 @@ void execute_pipes(){   //TODO
         close(pipes_fd[i]);
     }
 
-    for(i = 0; i < number_of_pipes + 1; i++)
-        wait(&status);
-    
+    for(i = 0; i < number_of_pipes + 1; i++){
+        /* waits for child to exit if required */
+        if (amper == 0)
+            retid = wait(&status);    
+    }
 
 }
 
@@ -977,6 +979,7 @@ int main() {
         }
         
         /* Does command line end with & */ 
+        amper = 0;
         amper = check_amper();
 
         /* Does command contains a '>' | '>>' | '2>' */
@@ -1027,9 +1030,7 @@ int main() {
 
         execute_pipes();
         /* parent continues over here... */
-        /* waits for child to exit if required */
-        if (amper == 0)
-            retid = wait(&status);
+        
         
         if (if_command_result == IF_STATEMENT)
         {
