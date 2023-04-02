@@ -31,3 +31,29 @@ hello: prompt = new_prompt_name
 ```C 
 new_prompt_name |
 ```
+
+## Echo & its extensions
+> 'Echo' consists of many features in this Shell, follow the below steps to use the command correctly.
+
+### 'Echo' for basic printing:
+```C
+hello: echo hello world
+hello world
+```
+
+```C
+hello: echo Hi $env_var how are you?
+Hi $env_var_content how are you?
+```
+
+### 'Echo $?'
+> This command will print the execution status of the last command.
+
+```C
+hello: ls
+shell.c myshell
+hello: echo $?
+0       // means success, other codes mean failure
+```
+
+
