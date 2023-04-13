@@ -92,6 +92,18 @@ char* get(int idx){
     return (*command_history)->commands[idx];
 }
 
+void pop_all(){
+    
+    int curr_idx = (*command_history)->first_idx % 20;
+    int last_idx = (*command_history)->last_idx % 20;
+    while (curr_idx != last_idx)
+    {
+        free(get(curr_idx));
+        curr_idx = (curr_idx + 1) % 20;
+    }
+    return;
+}
+
 
 /* Command Stack area */
 
@@ -152,6 +164,28 @@ void add_argument(char* arg[10]){
         }
     }
     number_of_arguments++;
+}
+
+void free_args(){
+    if (arguments)
+    {
+        args* arg_ptr = *arguments;
+        while (arg_ptr)
+        {
+            if (arg_ptr->next)
+            {
+                args* curr = arg_ptr;
+                arg_ptr = arg_ptr->next;
+                free(curr);
+            }
+            else{
+                free(arg_ptr);
+                return;
+            }
+        }
+        free(arguments);
+    }
+    
 }
 
 
@@ -257,9 +291,11 @@ int save_last_command(){
 
 
 
+
 int parse_command(){
 
     // init arguments struct
+    free_args();
     arguments = (args**)malloc(sizeof(args*));
     *arguments = create_args();
     number_of_arguments = 0;
@@ -545,75 +581,6 @@ void int_handler(int signal){
     kill(SIGINT, pid);
 }
 
-int if_else(){
-
-    args* arg_ptr = *arguments;
-    int argc;
-    args* if_command, *then_command, *else_command, *structure;
-    int cont = 0;
-    // get the IF command
-    while (arg_ptr)
-    {
-        argc = arg_ptr->argument.argc;
-        if (! strcmp(arg_ptr->argument.arg[0], "if"))
-        {
-            if_command = (args*)malloc(sizeof(args));
-            // if_command->argument.arg[0] = (char*) malloc(sizeof(char)*sizeof(arg_ptr->argument.arg[0]));
-            strcpy(if_command->argument.arg[0], "");
-            for (size_t i = 1; i < argc; i++)
-            {
-                strcat(if_command->argument.arg[0], arg_ptr->argument.arg[i]);
-                strcat(if_command->argument.arg[0], " ");
-                if_command->argument.argc++;
-            }
-            cont = 1;
-        }
-        arg_ptr = arg_ptr->next;
-    }
-    // if found an IF statement, continue - else return 0
-    if (!cont)
-    {
-        return 0;
-    }
-    
-    
-    // except a 'then' string
-    fgets(command, 1024, stdin);
-    command[strlen(command) - 1] = '\0';
-    parse_command();
-    
-    structure = *arguments;
-    if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "then")){
-        // except a command :
-        fgets(command, 1024, stdin);
-        command[strlen(command) - 1] = '\0';
-        parse_command();
-        then_command = *arguments;
-    }
-    else{
-        cont = 0;
-    }
-
-    // must have a 'then' command
-    if (!cont)
-    {
-        return 0;
-    }
-    
-    // except a 'else' | 'fi' string
-    fgets(command, 1024, stdin);
-    command[strlen(command) - 1] = '\0';
-    parse_command();
-
-    structure = *arguments;
-    if(structure->argument.argc > 0 && ! strcmp(structure->argument.arg[0], "else")){
-        return 1;
-    }
-    
-    return 0;
-}
-
-
 
 void execute_pipes(){   //TODO 
 
@@ -705,6 +672,7 @@ void execute_pipes(){   //TODO
     {
         close(pipes_fd[i]);
     }
+    free(pipes_fd);
 
     for(i = 0; i < number_of_pipes + 1; i++){
         /* waits for child to exit if required */
@@ -733,6 +701,7 @@ int set_env(){
         
         setenv((last_arg->argument.arg[0] + 1), new_var, 1);
         status = 0;
+        free(new_var);
         return 1;
     }
     return 0;
@@ -780,6 +749,8 @@ int read_var(){
             }
             
             setenv(var_name, new_var, 1);
+            free(var_name);
+            free(new_var);
             status = 0;
             return 1;
         }
@@ -920,6 +891,18 @@ int get_state(){
 }
 
 
+int free_all(){
+
+    pop_all();
+    free_args();
+    free(*command_history);
+    free(command_history);
+    free(prompt_name);
+    free(arguments);
+}
+
+
+
 int main() {
 
     prompt_name = (char*)malloc(sizeof(char)*8);
@@ -975,6 +958,7 @@ int main() {
         if (quit())
         {
             // exit with code 0
+            free_all();
             exit(0);
         }
         
