@@ -1,0 +1,22 @@
+ls -l
+wc -l test.py 
+ls -l | grep alon | grep shell.c
+cat test.py
+ls > output.txt
+ls -l >> output.txt
+ls fake_folder 2> erroutput.txt
+prompt = alonbarak:
+echo alon barak submission
+$name = alon
+echo hi, my name is $name
+!!
+echo $?
+cd test_folder
+pwd
+cd ..
+pwd
+echo Enter a string
+read last_name
+barak
+echo $last_name
+quit \n

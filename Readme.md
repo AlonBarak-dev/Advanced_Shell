@@ -11,7 +11,26 @@ later, run:
 ./myshell
 ```
 
+## How to run the Test?
+> First, make sure the program is compiled:
+run:
+```
+make
+```
+> Later, you can use the Makefile command to run the tests:
+```
+make runtest
+```
+> Please noitce that the tests located in the tests.txt file.
+> To clean you can run:
+```
+make clean
+```
+
+> The output of the test is located in the tests_output.txt file.
+
 ## Redirection
+#### This Assignment does not support the stdin redirection as it was not mentioned in the paper!
 > To perform Redirection using the '>' , '>>' , '2>' operators you can use the below example:
 
 ```C 
