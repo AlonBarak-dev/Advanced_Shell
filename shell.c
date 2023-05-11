@@ -74,10 +74,11 @@ void push(char* command){
         strcpy((*command_history)->commands[last], command);
         (*command_history)->last_idx++;
     }
-    else if(last == first - 1){
+    else if((last % 20) == ((first + 19) % 20)){
         // stack is full
-        (*command_history)->first_idx++;
-        (*command_history)->last_idx++;
+        (*command_history)->first_idx = ((*command_history)->first_idx + 1) % 20;
+        (*command_history)->last_idx = ((*command_history)->last_idx + 1) % 20;
+        (*command_history)->commands[last] = (char*)malloc(sizeof(char)*30);
         strcpy((*command_history)->commands[last], command);
     }
     else{
@@ -89,7 +90,7 @@ void push(char* command){
 
 
 char* get(int idx){
-    return (*command_history)->commands[idx];
+    return (*command_history)->commands[idx%20];
 }
 
 void pop_all(){
@@ -156,6 +157,7 @@ void add_argument(char* arg[10]){
         if (arg[i] != NULL)
         {
             last_argument->argument.arg[i] = (char*)malloc(sizeof(char)*96);
+            memset(last_argument->argument.arg[i], 0, 96);
             strcpy(last_argument->argument.arg[i], arg[i]);
             last_argument->argument.argc++;
         }
@@ -176,10 +178,19 @@ void free_args(){
             {
                 args* curr = arg_ptr;
                 arg_ptr = arg_ptr->next;
+                for(int i = 0; i < curr->argument.argc;i++){
+                    memset(curr->argument.arg[i], 0, 96);
+                    curr->argument.arg[i] = NULL;
+                }
                 free(curr);
             }
             else{
+                for(int i = 0; i < arg_ptr->argument.argc;i++){
+                    // memset(arg_ptr->argument.arg[i], 0, 96);
+                    arg_ptr->argument.arg[i] = NULL;
+                }
                 free(arg_ptr);
+                free(arguments);
                 return;
             }
         }
@@ -338,6 +349,7 @@ int parse_command(){
             for (size_t i = 0; i < 10; i++)
             {
                 argv[i] = NULL;
+                // memset(argv[i], 0, 96);
             }
             number_of_pipes++;
             i = 0;
@@ -497,25 +509,20 @@ int echo(){
                     printf("%d \n", status);
                     exit(0);
                 }
-
-                if (ptr_arg->argument.arg[1][0] == '$')
-                {
-                    // get Environment variable
-                    printf("%s \n", getenv(ptr_arg->argument.arg[1]+1));
-                    exit(0);
-                }
-                
                 int i = 1;
                 while (ptr_arg->argument.arg[i])
                 {
                     if (ptr_arg->argument.arg[i][0] == '$')
                     {
-                        ptr_arg->argument.arg[i] = getenv(ptr_arg->argument.arg[i]+1);
+                        strcpy(ptr_arg->argument.arg[i], getenv(ptr_arg->argument.arg[i]+1));
                     }
-                    printf("%s ", ptr_arg->argument.arg[i]);
+                    if(number_of_arguments == 1){
+                        printf("%s ", ptr_arg->argument.arg[i]);
+                    }
                     i++;
                 }
-                printf("\n");
+                if(number_of_arguments == 1)
+                    printf("\n");
                 exit(0);
             }
             else{
@@ -544,7 +551,6 @@ int perform_cd(){
     if (last_argc > 0 && ! strcmp(last_arg->argument.arg[0], "cd"))
     {
         getcwd(path, 256);
-        // printf("Before: %s\n", path);       // Delete before submitting
         if (last_argc == 1 || ! strcmp(last_arg->argument.arg[1], ".."))
         {
             // Go back to parent
@@ -557,7 +563,6 @@ int perform_cd(){
             chdir(path);
         }
         getcwd(path, 256);
-        // printf("After: %s\n", path);    // Delete before submitting
         status = 0;
         return 1;
     }
@@ -796,7 +801,7 @@ int traverse_history(){
                         printf("%s %s", prompt_name, hist_command);
                     }
                     else{
-                        history_idx = (history_idx - 1) % 20;
+                        history_idx = (history_idx + 19) % 20;
                         hist_command = get(history_idx);
                         printf("\033[1A");//line up
 		                printf("\x1b[2K");//delete line
@@ -958,7 +963,7 @@ int main() {
         if (quit())
         {
             // exit with code 0
-            free_all();
+            // free_all();
             exit(0);
         }
         
@@ -993,8 +998,10 @@ int main() {
         /* Echo command */
         if (echo())
         {
-            save_last_command();
-            continue;
+            if (number_of_arguments == 1){
+                save_last_command();
+                continue;
+            }   
         }
         
         /* CD command */

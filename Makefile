@@ -1,5 +1,5 @@
 run:
-	gcc -o myshell shell.c
+	gcc -g -o myshell shell.c
 
 runtest:
 	./myshell < tests.txt > tests_output.txt
